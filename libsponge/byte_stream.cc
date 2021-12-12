@@ -31,7 +31,7 @@ size_t ByteStream::write(const string &data) {
     }
     if (_end + actualWrite > capacity()) {
         std::copy(data.begin(), data.begin() + capacity() - _end, _buf.begin() + _end);
-        std::copy(data.begin() + capacity(), data.end(), _buf.begin());
+        std::copy(data.begin() + capacity() - _end, data.end(), _buf.begin());
     } else {
         std::copy(data.begin(), data.end(), _buf.begin() + _end);
     }
@@ -80,9 +80,7 @@ void ByteStream::pop_output(const size_t len) {
 std::string ByteStream::read(const size_t len) {
     DUMMY_CODE(len);
     std::string result = peek_output(len);
-    readExpand(result.size());
-    _totalRead += result.size();
-    _remainByte -= result.size();
+    pop_output(result.size());
     return result;
 }
 

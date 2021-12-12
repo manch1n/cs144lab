@@ -4,6 +4,8 @@
 #include "byte_stream.hh"
 
 #include <cstdint>
+#include <map>
+#include <numeric>
 #include <string>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -14,6 +16,17 @@ class StreamReassembler {
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    std::map<uint64_t, std::string> _subStrs;
+    size_t _eofSize;
+
+    // curbytes
+    size_t pushedBytes() const { return _output.buffer_size(); }
+    size_t totalRead() const { return _output.bytes_read(); }
+    bool reloacte(uint64_t idx, const std::string &data, std::pair<uint64_t, std::string> *ret);
+    void mergeSubstr();
+    void insertSubStr(std::pair<uint64_t, std::string> &&p);
+    void checkPush();
+    void checkEOF();
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

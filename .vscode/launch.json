@@ -8,7 +8,7 @@
             "name": "g++ - Build and debug active file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/build/tests/fsm_stream_reassembler_cap",
+            "program": "${workspaceRoot}/build/tests/recv_special",
             "args": [],
             "stopAtEntry": false,
             "cwd": ".",

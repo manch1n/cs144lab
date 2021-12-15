@@ -38,8 +38,6 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if (curAbsoluteSeqno == 0) {
         if (seg.header().syn == true) {
             curStrmIdx = 0;
-        } else if (seg.header().fin == true) {
-            curStrmIdx = 1;
         } else {
             return;
         }

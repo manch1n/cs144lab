@@ -7,6 +7,7 @@
 #include "wrapping_integers.hh"
 
 #include <functional>
+#include <list>
 #include <queue>
 
 //! \brief The "sender" part of a TCP implementation.
@@ -15,6 +16,44 @@
 //! segments, keeps track of which segments are still in-flight,
 //! maintains the Retransmission Timer, and retransmits in-flight
 //! segments if the retransmission timer expires.
+
+class RetransTimer {
+  public:
+    using CBType = std::function<void()>;
+    RetransTimer(size_t baseDuration)
+        : _baseDuration(baseDuration), _curms(0), _ringms(baseDuration), _consecutiveTimes(0), _cb{} {}
+    void setRingCallBack(const CBType &cb) { _cb = cb; }
+    // return the consecutive callback times
+    size_t tick(size_t duration, bool reInit = false) {
+        _curms += duration;
+        if (_curms >= _ringms) {
+            _cb();
+            reset(reInit);
+            _consecutiveTimes++;
+        }
+        return _consecutiveTimes;
+    };
+    void reset(bool reInit = true) {
+        _curms = 0;
+        if (reInit) {
+            _ringms = _baseDuration;
+            _consecutiveTimes = 0;
+        } else {
+            _ringms *= FACTOR;
+        }
+    };
+    size_t getConsecutiveTimes() const { return _consecutiveTimes; }
+
+    const size_t FACTOR = 2;
+
+  private:
+    const size_t _baseDuration;
+    size_t _curms;
+    size_t _ringms;
+    size_t _consecutiveTimes;
+    CBType _cb;
+};
+
 class TCPSender {
   private:
     //! our initial sequence number, the number for our SYN.
@@ -31,6 +70,28 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    size_t _peerReceiveWindow{1};
+
+    uint64_t _lastAckno;
+
+    bool _sentFIN = false;
+
+    bool _synAck = false;
+
+    size_t _zeroWindowAckTimes = 0;
+
+    RetransTimer _timer;
+
+    std::list<TCPSegment> _unackedSegments;
+
+    TCPSegment constructNormSegment(std::string &&data, bool synFlag = false, bool finFlag = false);
+
+    void pushNewSegment(const TCPSegment &segment);
+
+    void tryClearUnackedSegments(uint64_t newAckno);
+
+    void resend();
 
   public:
     //! Initialize a TCPSender

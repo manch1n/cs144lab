@@ -53,11 +53,16 @@ string ByteStream::peek_output(const size_t len) const {
     }
     std::string result(actualPeek, '\0');
     if (_start < _end) {
-        std::copy(_buf.begin() + _start, _buf.begin() + _end, result.begin());
-    } else {
-        std::copy(_buf.begin() + _start, _buf.end(), result.begin());
-        size_t offset = capacity() - _start;
-        std::copy(_buf.begin(), _buf.begin() + _end, result.begin() + offset);
+        std::copy(_buf.begin() + _start, _buf.begin() + _start + actualPeek, result.begin());
+    } else if (_start >= _end) {
+        if ((_start + actualPeek) > capacity()) {
+            size_t offset = (_start + actualPeek) - capacity();
+            std::copy(_buf.begin() + _start, _buf.end(), result.begin());
+            std::copy(
+                _buf.begin(), _buf.begin() + offset, result.begin() + std::distance(_buf.begin() + _start, _buf.end()));
+        } else {
+            std::copy(_buf.begin() + _start, _buf.begin() + _start + actualPeek, result.begin());
+        }
     }
     return result;
 }

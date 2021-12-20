@@ -79,6 +79,8 @@ class TCPSender {
 
     bool _synAck = false;
 
+    bool _synSent = false;
+
     size_t _zeroWindowAckTimes = 0;
 
     RetransTimer _timer;

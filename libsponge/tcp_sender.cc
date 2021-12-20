@@ -62,8 +62,6 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _lastAckno(0)
     , _timer(retx_timeout)
     , _unackedSegments() {
-    TCPSegment synseg = constructNormSegment("", true, false);
-    pushNewSegment(synseg);
     _peerReceiveWindow = 0;
     _timer.setRingCallBack(std::bind(&TCPSender::resend, this));
 }
@@ -79,6 +77,11 @@ uint64_t TCPSender::bytes_in_flight() const {
 }
 
 void TCPSender::fill_window() {
+    if (_synSent == false) {
+        _synSent = true;
+        TCPSegment synseg = constructNormSegment("", true, false);
+        pushNewSegment(synseg);
+    }
     size_t usedWindow = _next_seqno - _lastAckno;
     size_t couldUseWindow = _peerReceiveWindow > usedWindow ? (_peerReceiveWindow - usedWindow) : 0;
     if (_peerReceiveWindow == 0 && _synAck == true && _zeroWindowAckTimes == 1) {
@@ -125,9 +128,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         _zeroWindowAckTimes = 0;
         _lastAckno = absoluteAckno;
         _peerReceiveWindow = window_size;
-        tryClearUnackedSegments(absoluteAckno);
         _timer.reset();
     }
+    tryClearUnackedSegments(absoluteAckno);
     if (_peerReceiveWindow == 0) {
         _zeroWindowAckTimes++;
     } else {
@@ -138,6 +141,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     DUMMY_CODE(ms_since_last_tick);
+    if (_unackedSegments.empty()) {
+        return;
+    }
     bool reInit = false;  // FIXME:when ended,close the timer
     if (_peerReceiveWindow == 0 && _synAck == true) {
         reInit = true;
@@ -152,4 +158,5 @@ unsigned int TCPSender::consecutive_retransmissions() const {
 void TCPSender::send_empty_segment() {
     TCPSegment emptySegment = constructNormSegment("");
     pushNewSegment(emptySegment);
+    tryClearUnackedSegments(_lastAckno);
 }

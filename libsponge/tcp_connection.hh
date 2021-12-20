@@ -20,6 +20,19 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
+    bool _recvRSTOrSomeWrong = false;
+    size_t _msSinceLastRecv = 0;
+    WrappingInt32 _lastAckno{0};  // end PingPong
+    bool _lingerDone = false;
+    size_t _lingerTime = 0;
+    bool _setLingerOnce = true;
+    void pushOutgoingSegments(const TCPState &prevState);
+    void sendRSTSeg();
+
+    bool recvFINEndInput() const { return unassembled_bytes() == 0 && _receiver.stream_out().eof(); }
+    bool sentFINAndAcked() const { return _sender.bytes_in_flight() == 0 && _sender.stream_in().eof(); }
+    bool sentFIN() const { return _sender.stream_in().eof(); }
+    bool prereq123() const { return recvFINEndInput() && sentFINAndAcked(); };
 
   public:
     //! \name "Input" interface for the writer

@@ -10,13 +10,12 @@ void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
-void TCPReceiver::segment_received(const TCPSegment &seg) {
+bool TCPReceiver::segment_received(const TCPSegment &seg) {
     DUMMY_CODE(seg);
-
     uint64_t prevAbsoluteSeqno = _absoluteSeqno;
     if (seg.header().syn == true) {
         if (_synRecv == true)
-            return;
+            return false;
         else {
             _synRecv = true;
             _isn = seg.header().seqno;
@@ -24,22 +23,20 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         }
     }
     if (_synRecv == false) {
-        return;
-    }
-    if (seg.header().fin == true) {
-        if (_finDone == true) {
-            return;
-        }
+        return false;
     }
 
     // edge situation
     uint64_t curAbsoluteSeqno = unwrap(seg.header().seqno, _isn, prevAbsoluteSeqno);
+    if (prevAbsoluteSeqno + window_size() <= curAbsoluteSeqno) {
+        return false;
+    }
     uint64_t curStrmIdx = streamIdx(curAbsoluteSeqno);
     if (curAbsoluteSeqno == 0) {
         if (seg.header().syn == true) {
             curStrmIdx = 0;
         } else {
-            return;
+            return false;
         }
     }
     if (curAbsoluteSeqno == 1) {
@@ -62,6 +59,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
             _endFlag = true;
         }
     }
+    return true;
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const {

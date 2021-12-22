@@ -6,6 +6,10 @@
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
+#ifdef DEBUG_LOG
+#include <iostream>
+#endif
+
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
   private:
@@ -33,8 +37,25 @@ class TCPConnection {
     bool sentFINAndAcked() const { return _sender.bytes_in_flight() == 0 && _sender.stream_in().eof(); }
     bool sentFIN() const { return _sender.stream_in().eof(); }
     bool prereq123() const { return recvFINEndInput() && sentFINAndAcked(); };
+#ifdef DEBUG_LOG
+    // FIXME:for log only
+    std::vector<std::string> _logMsg{};
+    void logRecv(const TCPSegment &seg) {
+        _logMsg.push_back("recv segment: " + seg.header().summary() +
+                          " payloadBytes: " + std::to_string(seg.length_in_sequence_space()));
+    }
+    void logSend(const TCPSegment &seg) {
+        _logMsg.push_back("send segment: " + seg.header().summary() +
+                          " payloadBytes: " + std::to_string(seg.length_in_sequence_space()));
+    }
+    void printLog() {
+        for (const auto &str : _logMsg) {
+            std::cerr << str << std::endl;
+        }
+    }
+#endif
 
-    public:
+  public:
     //! \name "Input" interface for the writer
     //!@{
 

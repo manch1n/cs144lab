@@ -23,6 +23,12 @@ size_t TCPConnection::time_since_last_segment_received() const { return _msSince
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     DUMMY_CODE(seg);
+#ifdef DEBUG_LOG
+    if (seg.header().rst == true) {
+        _logMsg.push_back("Recv RST");
+    }
+    logRecv(seg);
+#endif
     TCPState prevState = state();
     if (seg.header().rst == true) {
         _recvRSTOrSomeWrong = true;
@@ -130,14 +136,21 @@ void TCPConnection::pushOutgoingSegments(const TCPState &prevState) {
         }
         seg.header().win = remainCapa;
         seg.header().ack = true;
-        if (seg.header().syn == true && prevState == TCPState::State::CLOSED) {
+        if (seg.header().syn == true &&
+            (prevState == TCPState::State::CLOSED || prevState == TCPState::State::SYN_SENT)) {
             seg.header().ack = false;
         }
         _segments_out.push(seg);
+#ifdef DEBUG_LOG
+        logSend(seg);
+#endif
     }
 }
 
 void TCPConnection::sendRSTSeg() {
+#ifdef DEBUG_LOG
+    _logMsg.push_back("sendRST");
+#endif
     _recvRSTOrSomeWrong = true;
     _linger_after_streams_finish = false;
     _sender.stream_in().set_error();
@@ -146,17 +159,26 @@ void TCPConnection::sendRSTSeg() {
     rstSegment.header().rst = true;
     rstSegment.header().ackno = _receiver.ackno().value_or(WrappingInt32(0));
     rstSegment.header().seqno = _sender.next_seqno();
-    _segments_out = std::queue<TCPSegment>();  // empty
+    _segments_out = std::queue<TCPSegment>();  // emp
+#ifdef DEBUG_LOG
+    logSend(rstSegment);
+#endif
     _segments_out.push(rstSegment);
 }
 
 void TCPConnection::connect() {
     _sender.fill_window();
+#ifdef DEBUG_LOG
+    logSend(_sender.segments_out().front());
+#endif
     _segments_out.push(_sender.segments_out().front());
     _sender.segments_out().pop();
 }
 
 TCPConnection::~TCPConnection() {
+#ifdef DEBUG_LOG
+    printLog();
+#endif
     try {
         if (active()) {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";

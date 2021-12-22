@@ -123,11 +123,7 @@ void TCPConnection::pushOutgoingSegments(const TCPState &prevState) {
     while (_sender.segments_out().empty() == false) {
         TCPSegment seg = _sender.segments_out().front();
         _sender.segments_out().pop();
-        if (_receiver.ackno().has_value() == false) {  // not ack syn
-            seg.header().ackno = WrappingInt32(0);
-        } else {
-            seg.header().ackno = _receiver.ackno().value();
-        }
+        seg.header().ackno = _receiver.ackno().value_or(WrappingInt32(0));
         size_t remainCapa = _receiver.window_size();
         if (remainCapa > std::numeric_limits<uint16_t>::max()) {
             remainCapa = std::numeric_limits<uint16_t>::max();
@@ -148,7 +144,7 @@ void TCPConnection::sendRSTSeg() {
     _receiver.stream_out().set_error();
     TCPSegment rstSegment;
     rstSegment.header().rst = true;
-    rstSegment.header().ackno = _receiver.ackno().value();
+    rstSegment.header().ackno = _receiver.ackno().value_or(WrappingInt32(0));
     rstSegment.header().seqno = _sender.next_seqno();
     _segments_out = std::queue<TCPSegment>();  // empty
     _segments_out.push(rstSegment);

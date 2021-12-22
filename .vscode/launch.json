@@ -8,10 +8,12 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/tests/fsm_listen_relaxed",
-            "args": [],
+            "program": "${workspaceFolder}/txrx.sh",
+            "args": [
+                "-icDnd 10 -w 8K -l 0.1 -L 0.1"
+            ],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}/build",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

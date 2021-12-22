@@ -34,7 +34,7 @@ class TCPConnection {
     bool sentFIN() const { return _sender.stream_in().eof(); }
     bool prereq123() const { return recvFINEndInput() && sentFINAndAcked(); };
 
-  public:
+    public:
     //! \name "Input" interface for the writer
     //!@{
 

@@ -28,7 +28,10 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
 
     // edge situation
     uint64_t curAbsoluteSeqno = unwrap(seg.header().seqno, _isn, prevAbsoluteSeqno);
-    if (prevAbsoluteSeqno + window_size() <= curAbsoluteSeqno) {
+    if (prevAbsoluteSeqno + window_size() == curAbsoluteSeqno && seg.length_in_sequence_space() != 0) {
+        return false;
+    }
+    if (prevAbsoluteSeqno + window_size() < curAbsoluteSeqno) {
         return false;
     }
     uint64_t curStrmIdx = streamIdx(curAbsoluteSeqno);
@@ -58,6 +61,9 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
             _finDone = true;
             _endFlag = true;
         }
+    }
+    if (curAckinbuf == prevAckinbuf && seg.payload().size() != 0) {
+        return false;
     }
     return true;
 }

@@ -1,13 +1,17 @@
 #ifndef SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 #define SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
 #include "tcp_over_ip.hh"
 #include "tun.hh"
 
+#include <map>
 #include <optional>
 #include <queue>
-
+#include <type_traits>
+#include <utility>
+#include <vector>
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
 
@@ -29,6 +33,7 @@
 //! the network interface passes it up the stack. If it's an ARP
 //! request or reply, the network interface processes the frame
 //! and learns or replies as necessary.
+
 class NetworkInterface {
   private:
     //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
@@ -39,6 +44,39 @@ class NetworkInterface {
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
+
+    std::map<Address,
+             std::tuple<EthernetAddress, size_t, size_t, bool>,
+             bool (*)(const Address &left, const Address &right)>
+        _ipToEther;  //<eaddr,expiredtime,time since request,valid>
+    std::map<Address, std::vector<InternetDatagram>, bool (*)(const Address &left, const Address &right)>
+        _remainDatagrams;
+    const size_t WAIT_ARP_REPLY_TIME = 5 * 1000;  // 5 seconds
+    const size_t EXPIRED_TIME = 30 * 1000;        // 30 seconds
+    std::optional<EthernetAddress> validEtherAddr(const std::tuple<EthernetAddress, size_t, size_t, bool> &eAddr) {
+        const auto &[eaddr, expired, request, valid] = eAddr;
+        if (expired < EXPIRED_TIME && valid) {
+            return {eaddr};
+        }
+        return {};
+    }
+    void requestARP(const Address &ipaddr);
+    void replyARP(const Address &ipaddr, const EthernetAddress &eaddr);
+    void updateARP(const Address &addr, const EthernetAddress &eaddr);
+    void tryPushEthernetFrame(const Address &addr);
+
+    template <typename... STRS>
+    EthernetFrame constructNormalEtherFrame(const EthernetAddress &src,
+                                            const EthernetAddress &dst,
+                                            uint16_t type,
+                                            STRS &&...strs) {
+        EthernetFrame frame;
+        frame.header().src = src;
+        frame.header().dst = dst;
+        frame.header().type = type;
+        std::initializer_list<int>{(frame.payload().append(std::forward<STRS>(strs)), 0)...};
+        return frame;
+    }
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

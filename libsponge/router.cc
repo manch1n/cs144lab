@@ -16,7 +16,7 @@ using namespace std;
 // You will need to add private members to the class declaration in `router.hh`
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 //! \param[in] route_prefix The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
 //! \param[in] prefix_length For this route to be applicable, how many high-order (most-significant) bits of the route_prefix will need to match the corresponding bits of the datagram's destination address?
@@ -30,13 +30,50 @@ void Router::add_route(const uint32_t route_prefix,
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
     DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-    // Your code here.
+    _routeEntries.push_back({route_prefix, prefix_length, next_hop, interface_num});
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
     DUMMY_CODE(dgram);
-    // Your code here.
+    static const int NOT_FOUND = -1;
+    uint8_t longest = 0;
+    int foundIdx = NOT_FOUND;
+
+    uint8_t ttl = dgram.header().ttl;
+    if (ttl == 0 || ttl == 1) {
+        return;
+    } else {
+        dgram.header().ttl = ttl - 1;
+    }
+
+    for (size_t i = 0; i < _routeEntries.size(); ++i) {
+        const auto &[prefix, prefixLen, nextHop, interfaceNum] = _routeEntries[i];
+        uint32_t netmask = getNetmask(prefixLen);
+        if ((netmask & prefix) == (netmask & dgram.header().dst)) {
+            if (prefixLen >= longest) {
+                longest = prefixLen;
+                foundIdx = i;
+            }
+        }
+    }
+    if (foundIdx != NOT_FOUND) {
+        const auto &[prefix, prefixLen, nextHop, interfaceNum] = _routeEntries[foundIdx];
+        AsyncNetworkInterface &outInterface = interface(interfaceNum);
+        if (nextHop.has_value()) {
+            outInterface.send_datagram(dgram, nextHop.value());
+        } else {
+            outInterface.send_datagram(dgram, Address::from_ipv4_numeric(dgram.header().dst));
+        }
+    }
+}
+
+uint32_t Router::getNetmask(uint8_t prefix) {
+    uint32_t result = 0;
+    for (int i = 0; i < prefix; ++i) {
+        result |= (1 << (31 - i));
+    }
+    return result;
 }
 
 void Router::route() {

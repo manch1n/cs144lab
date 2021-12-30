@@ -1,73 +1,24 @@
-For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.edu/class/cs144/vm_howto).
+#### ByteStream
+完成一个基于内存且固定大小的字节流，之后的很多组件都是基于bytestream的。
+##### 思路：
+* 最简单的方法是用queue管理这些传进来的string，并且维护大小，但这也显而易见的是性能的降低。
+```c++
+size_t ByteStream::write(const string &data)
+```
+接口的形参为cr，queue基于deque，导致了多余的构造析构分配内存开销。
+*  基于一个固定大小vector的循环队列,维护start,end两个指针和队内大小size，当有数据到来时end+=data.size()，当需要取出数据时start+=popSize。用户可取的空间为[start,end)。一般来说，分为4种情况：
+**1)start==end && size\==0**
+显然这时候stream为空
+**2)start==end && size\==capacity()**
+显然这个时候为满
+**3)start < end**
+这时候可取数据区间为[start,end)
+**4)start > end**
+这时候数据可取区间为[start,capacity())与[0,end),图片中红色部分才为可取用数据。
+![20211230181830](https://raw.githubusercontent.com/manch1n/picbed/master/images/20211230181830.png)
 
-## Sponge quickstart
+#####  结果
+![20211230182546](https://raw.githubusercontent.com/manch1n/picbed/master/images/20211230182546.png)
 
-To set up your build directory:
-
-	$ mkdir -p <path/to/sponge>/build
-	$ cd <path/to/sponge>/build
-	$ cmake ..
-
-**Note:** all further commands listed below should be run from the `build` dir.
-
-To build:
-
-    $ make
-
-You can use the `-j` switch to build in parallel, e.g.,
-
-    $ make -j$(nproc)
-
-To test (after building; make sure you've got the [build prereqs](https://web.stanford.edu/class/cs144/vm_howto) installed!)
-
-    $ make check_labN *(replacing N with a checkpoint number)*
-
-The first time you run `make check_lab...`, it will run `sudo` to configure two
-[TUN](https://www.kernel.org/doc/Documentation/networking/tuntap.txt) devices for use during
-testing.
-
-### build options
-
-You can specify a different compiler when you run cmake:
-
-    $ CC=clang CXX=clang++ cmake ..
-
-You can also specify `CLANG_TIDY=` or `CLANG_FORMAT=` (see "other useful targets", below).
-
-Sponge's build system supports several different build targets. By default, cmake chooses the `Release`
-target, which enables the usual optimizations. The `Debug` target enables debugging and reduces the
-level of optimization. To choose the `Debug` target:
-
-    $ cmake .. -DCMAKE_BUILD_TYPE=Debug
-
-The following targets are supported:
-
-- `Release` - optimizations
-- `Debug` - debug symbols and `-Og`
-- `RelASan` - release build with [ASan](https://en.wikipedia.org/wiki/AddressSanitizer) and
-  [UBSan](https://developers.redhat.com/blog/2014/10/16/gcc-undefined-behavior-sanitizer-ubsan/)
-- `RelTSan` - release build with
-  [ThreadSan](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/Thread_Sanitizer)
-- `DebugASan` - debug build with ASan and UBSan
-- `DebugTSan` - debug build with ThreadSan
-
-Of course, you can combine all of the above, e.g.,
-
-    $ CLANG_TIDY=clang-tidy-6.0 CXX=clang++-6.0 .. -DCMAKE_BUILD_TYPE=Debug
-
-**Note:** if you want to change `CC`, `CXX`, `CLANG_TIDY`, or `CLANG_FORMAT`, you need to remove
-`build/CMakeCache.txt` and re-run cmake. (This isn't necessary for `CMAKE_BUILD_TYPE`.)
-
-### other useful targets
-
-To generate documentation (you'll need `doxygen`; output will be in `build/doc/`):
-
-    $ make doc
-
-To format (you'll need `clang-format`):
-
-    $ make format
-
-To see all available targets,
-
-    $ make help
+##### 我的github地址 觉得可以的给个star吧:)
+[我的github](https://github.com/manch1n/cs144lab)

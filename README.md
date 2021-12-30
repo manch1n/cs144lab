@@ -1,3 +1,4 @@
+[官方Lab0地址](https://cs144.github.io/assignments/lab0.pdf)
 #### ByteStream
 完成一个基于内存且固定大小的字节流，之后的很多组件都是基于bytestream的。
 ##### 思路：
@@ -17,6 +18,7 @@ size_t ByteStream::write(const string &data)
 这时候数据可取区间为[start,capacity())与[0,end),图片中红色部分才为可取用数据。
 ![20211230181830](https://raw.githubusercontent.com/manch1n/picbed/master/images/20211230181830.png)
 
+[关键函数write](https://github.com/manch1n/cs144lab/blob/mylab0/libsponge/byte_stream.cc#L22)
 #####  结果
 ![20211230182546](https://raw.githubusercontent.com/manch1n/picbed/master/images/20211230182546.png)
 
